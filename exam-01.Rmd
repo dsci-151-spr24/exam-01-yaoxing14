@@ -1,7 +1,7 @@
 ---
 title: "Take Home Exam #1"
-author: "Adam J Sullivan"
-date: "February 24, 2024"
+author: "Yaoxing qian"
+date: "Mar 1, 2025"
 output: html_document
 ---
 
@@ -98,11 +98,52 @@ The main data is in the `flights` data frame, but there are additional data sets
 
 1.  **Question 1 (10 points)** - What are the ten most common destinations for flights from NYC airports in 2013?
     Make a table that lists these in descending order of frequency and shows the number of fligts heading to each airport.
+    
+Narrative:
+I think this analysis identifies the top 10 most common flight destinations from NYC airports in 2013 and the number of flights heading to each airport.
+
+Approach:
+I grouped the flight data by destination, counted the number of flights for each, and then sorted the results in descending order to get the top 10 destinations. I joined this data with the airport information to show the airport names alongside the flight counts.
+```{r}
+
+library(tidyverse)
+library(nycflights13)
+
+top_destinations <- flights %>%
+  group_by(dest) %>%
+  summarise(num_flights = n()) %>%
+  arrange(desc(num_flights)) %>%
+  head(10) %>%
+  left_join(airports, by = c("dest" = "faa")) %>%
+  select(name, num_flights)
+
+print(top_destinations)
+
+```
 
 2.  **Question 2 (10 points)** - Which airlines have the most flights departing from NYC airports in 2013?
     Make a table that lists these in descending order of frequency and shows the number of flights for each airline.
     In your narrative mention the names of the airlines as well.
     *Hint:* You can use the `airlines` dataset to look up the airline name based on `carrier` code.
+Narrative:
+This question examines the airlines that operated the most flights from NYC airports in 2013. The airlines with the highest flight counts include major players like American Airlines, Delta, and United.
+
+Approach:
+To solve this, I first grouped the flight data by the airline carrier code and counted the number of flights for each. After sorting the results in descending order, I joined this with the airlines dataset to map the carrier codes to full airline names. The resulting table shows the airlines and their respective flight counts.
+```{r}
+library(tidyverse)
+library(nycflights13)
+
+top_airlines <- flights %>%
+  group_by(carrier) %>%
+  summarise(num_flights = n()) %>%
+  arrange(desc(num_flights)) %>%
+  left_join(airlines, by = "carrier") %>%
+  select(name, num_flights)
+
+print(top_airlines)
+
+```
 
 3.  **Question 3 (10 points)** - Consider only flights that have non-missing arrival delay information.
     Your answer should include the name of the carrier in addition to the carrier code and the values asked.
@@ -110,11 +151,90 @@ The main data is in the `flights` data frame, but there are additional data sets
     a\.
     Which carrier had the highest mean arrival delay?
 
+Narrative:
+This part of the analysis focuses on identifying the airline with the highest average arrival delay, based on flights with available arrival delay data. The airline with the longest delay is highlighted.The last lowest one also proposed.
+
+Approach:
+I filtered the flights dataset to include only those with non-missing arrival delay information. Then, I grouped the data by carrier, calculated the mean arrival delay for each, and joined the result with the airlines dataset to display the full airline name. Finally, I sorted the airlines by the mean delay and identified the carrier with the highest average delay.The same method is used for lowest.
+```{r}
+
+library(tidyverse)
+library(nycflights13)
+
+arrival_delays <- flights %>%
+  filter(!is.na(arr_delay)) %>%
+  group_by(carrier) %>%
+  summarise(mean_arr_delay = mean(arr_delay, na.rm = TRUE)) %>%
+  left_join(airlines, by = "carrier") %>%
+  select(name, carrier, mean_arr_delay)
+
+highest_airline <- arrival_delays %>%
+  arrange(desc(mean_arr_delay)) %>%
+  head(1)
+
+print("Airline with the highest mean arrival delay:")
+print(highest_airline)
+
+```
+
     b\.
     Which carrier had the lowest mean arrival delay?
+```{r}
+
+library(tidyverse)
+library(nycflights13)
+
+arrival_delays <- flights %>%
+  filter(!is.na(arr_delay)) %>%
+  group_by(carrier) %>%
+  summarise(mean_arr_delay = mean(arr_delay, na.rm = TRUE)) %>%
+  left_join(airlines, by = "carrier") %>%
+  select(name, carrier, mean_arr_delay)
+
+lowest_airline <- arrival_delays %>%
+  arrange(mean_arr_delay) %>%
+  head(1)
+
+print("Airline with the lowest mean arrival delay:")
+print(lowest_airline)
+
+```
 
 4.  **Question 4 (10 points)** - What was the mean temperature at the origin airport on the day with the highest departure delay?
     Your answer should include the name of origin airport, the date with the highest departure delay, and the mean temperature on that day.
+    
+Narrative:
+I think that question looks like the day with the highest departure delay and examines the mean temperature at the original airport on that day. The result shows both the airport name and the temperature.
+
+Approach:
+I filtered the flights dataset to find the day with the highest departure delay and calculated the mean temperature for that day at the origin airport using the weather dataset. I then added airport information to display the airport name along with the delay and temperature details.
+
+```{r}
+
+library(tidyverse)
+library(nycflights13)
+
+max_dep_delay <- flights %>%
+  filter(!is.na(dep_delay)) %>%
+  arrange(desc(dep_delay)) %>%
+  slice(1) %>%
+  select(origin, year, month, day, dep_delay)
+
+mean_temp <- weather %>%
+  filter(origin == max_dep_delay$origin, 
+         year == max_dep_delay$year, 
+         month == max_dep_delay$month, 
+         day == max_dep_delay$day) %>%
+  summarise(mean_temp = mean(temp, na.rm = TRUE))
+
+origin_airport <- airports %>%
+  filter(faa == max_dep_delay$origin) %>%
+  select(name)
+
+print("Day with the highest departure delay and mean temperature at the origin:")
+print(data.frame(origin_airport, max_dep_delay, mean_temp))
+
+```
 
 5.  **Question 5 (15 points)** - Consider breaking the day into four time intervals: 12:01am-6am, 6:01am-12pm, 12:01pm-6pm, 6:01pm-12am.
 
@@ -123,6 +243,44 @@ The main data is in the `flights` data frame, but there are additional data sets
 
     b\.
     Comment on how the likelihood of being delayed change throughout the day?
+    in the morning, will be more punctual. in the night will be delay.
+    
+Narrative:
+This analysis examines delayed flights at four time intervals throughout the day to understand variations in delays. 
+Approach:
+I created hourly intervals, calculated the proportion of delayed flights (defined as departures delayed by more than zero minutes), and summarized the results for each time period.
+    
+```{r}
+
+library(tidyverse)
+library(nycflights13)
+
+# Analysis for delay proportions based on time intervals
+flights_delay_analysis <- flights %>%
+  mutate(
+    time_interval = case_when(
+      hour >= 0 & hour < 6  ~ "12:01 AM - 6:00 AM",
+      hour >= 6 & hour < 12 ~ "6:01 AM - 12:00 PM",
+      hour >= 12 & hour < 18 ~ "12:01 PM - 6:00 PM",
+      hour >= 18 & hour <= 23 ~ "6:01 PM - 12:00 AM"
+    ),
+    delayed = if_else(dep_delay > 0, 1, 0)  # Using if_else for type consistency
+  ) %>%
+  filter(!is.na(dep_delay))  # Filter out rows with missing departure delay
+
+# Calculating the proportions of delayed flights for each time interval
+delay_proportions <- flights_delay_analysis %>%
+  group_by(time_interval) %>%
+  summarise(
+    total_flights = n(),
+    delayed_flights = sum(delayed),
+    proportion_delayed = delayed_flights / total_flights
+  ) %>%
+  arrange(time_interval)  # Ensure intervals are in the correct order
+
+# Print the results
+print(delay_proportions)
+```
 
 6.  **Question 6 (15 points)** - Find the flight with the longest air time.
 
@@ -135,6 +293,37 @@ The main data is in the `flights` data frame, but there are additional data sets
     c\.
     How many seats does the plane that flew this flight have?
 
+Narrative:
+This analysis identifies the flight with the longest air time, its destination, and the number of seats on the operating plane. 
+Approach:
+To accomplish this, I filtered the flights dataset to exclude missing air time values and sorted the flights in descending order. After identifying the longest flight, I joined the airports dataset for the destination city and the planes dataset for the number of seats.
+
+```{r}
+
+library(tidyverse)
+library(nycflights13)
+
+longest_flight <- flights %>%
+  filter(!is.na(air_time)) %>%  
+  arrange(desc(air_time)) %>%
+  slice(1)  
+
+
+destination <- airports %>%
+  filter(faa == longest_flight$dest) %>%
+  select(name)
+
+
+plane_info <- planes %>%
+  filter(tailnum == longest_flight$tailnum) %>%
+  select(seats)
+
+longest_flight %>% select(origin, dest, air_time, tailnum)
+destination
+plane_info
+
+```
+
 7.  **Question 7 (15 pts)** - The `airports` data frame contains information on a large number of primarily American airports.
     These data include location information for these airports in the form of latitude and longitude coordinates.
     In this question we limit our focus to the [Contiguous United States](https://en.wikipedia.org/wiki/Contiguous_United_States).
@@ -144,10 +333,67 @@ The main data is in the `flights` data frame, but there are additional data sets
     [This Wikipedia article](https://en.wikipedia.org/wiki/List_of_extreme_points_of_the_United_States) can help, but you're welcomed to use other resources as well.
     Make sure to cite whatever resource you use.
 
+Narrative:
+This analysis visualizes the distribution of airport longitudes in the Contiguous United States, highlighting geographic patterns related to population density and infrastructure.
+
+Approach:
+I filtered the airports dataset to include only those in the Contiguous U.S. and created a histogram to show the distribution of airport longitudes, revealing airport concentrations across the country.
+    
+The distribution of airports in the contiguous U.S. shows a clear disparity, with a higher density of airports in the east and fewer in the west. Compared to the east, the west has a smaller population and more mountainous terrain. This pattern reflects how geography, population distribution, and economic development influence airport infrastructure.
+    
+  
+```{r}
+library(tidyverse)
+library(nycflights13)
+
+contiguous_us_airports <- airports %>%
+  filter(lat >= 24.5 & lat <= 49.5,  
+         lon >= -124.8 & lon <= -66.9) 
+
+ggplot(contiguous_us_airports, aes(x = lon)) +
+  geom_histogram(binwidth = 2, fill = "steelblue", color = "black") +
+  labs(title = "Distribution of Longitudes of Airports in the Contiguous U.S.",
+       x = "Longitude",
+       y = "Number of Airports") +
+  theme_minimal()
+```
+
 8.  **Question 8 (15 pts)** - Recreate the plot included below using the `flights` data.
     Once you have created the visualization, in no more than one paragraph, describe what you think the point of this visualization might be.
     *Hint:* The visualization uses the variable `arrival`, which is not included in the `flights` data frame.
     You will have to create `arrival` yourself, it is a categorical variable that is equal to `"ontime"` when `arr_delay <= 0` and `"delayed"` when `arr_delay > 0`.
+The table compares the on-time performance of different airlines. The blue ones are flights with high on-time performance, while the yellow ones are delayed.
+
+Narrative:
+This plot shows the proportion of on-time and delayed flights for each airline, with blue bars for on-time flights and yellow bars for delayed ones.
+
+Approach:
+I categorized flights into "ontime" (arrival delay zero or negative) and "delayed" (positive arrival delay). Then, I grouped the data by carrier and arrival status, calculated the proportions, and visualized the results in a stacked bar chart.
+    
+    
+```{r}
+library(tidyverse)
+library(nycflights13)
+
+flights <- flights %>%
+  mutate(arrival = ifelse(arr_delay <= 0, "ontime", "delayed"))
+
+carrier_arrival <- flights %>%
+  filter(!is.na(arrival)) %>% 
+  group_by(carrier, arrival) %>%
+  summarise(count = n()) %>%
+  mutate(proportion = count / sum(count)) %>%
+  ungroup()
+
+ggplot(carrier_arrival, aes(x = carrier, y = proportion, fill = arrival)) +
+  geom_bar(stat = "identity", position = "stack") +
+  labs(title = "Proportion of On-Time and Delayed Flights by Carrier",
+       x = "Carrier",
+       y = "Proportion",
+       fill = "Arrival Status") +
+  scale_fill_manual(values = c("ontime" = "steelblue", "delayed" = "orange")) +
+  theme_minimal()
+```
 
 ![](img/plot-to-recreate.png)
 
